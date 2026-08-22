@@ -4,8 +4,9 @@
   <meta charset="UTF-8" />
   <title>TravelViet - Đang chuyển hướng...</title>
   <script>
+    var base = location.hostname.endsWith('github.io') ? '/travel_vibe_coding/' : '/';
     sessionStorage.setItem('spa-redirect-path', location.pathname + location.search + location.hash);
-    location.replace(location.origin + '/');
+    location.replace(location.origin + base);
   </script>
 </head>
 <body>

@@ -1,19 +1,21 @@
+import { withBase } from './basePath.js';
+
 export const ROUTES = {
-  HOME: '/',
-  FLIGHTS: '/flights',
-  FLIGHT_DETAIL: '/flight-detail',
-  TOURS: '/tours',
-  TOUR_DETAIL: '/tour-detail',
-  CART: '/cart',
-  LOGIN: '/login',
-  REGISTER: '/register',
-  FORGOT_PASSWORD: '/forgot-password',
-  PROFILE: '/profile',
-  DASHBOARD: '/dashboard',
-  ADMIN_TOURS: '/admin/tours',
-  ADMIN_TOURS_CREATE: '/admin/tours/create',
-  ADMIN_FLIGHTS: '/admin/flights',
-  ADMIN_FLIGHTS_CREATE: '/admin/flights/create',
+  HOME: withBase('/'),
+  FLIGHTS: withBase('/flights'),
+  FLIGHT_DETAIL: withBase('/flight-detail'),
+  TOURS: withBase('/tours'),
+  TOUR_DETAIL: withBase('/tour-detail'),
+  CART: withBase('/cart'),
+  LOGIN: withBase('/login'),
+  REGISTER: withBase('/register'),
+  FORGOT_PASSWORD: withBase('/forgot-password'),
+  PROFILE: withBase('/profile'),
+  DASHBOARD: withBase('/dashboard'),
+  ADMIN_TOURS: withBase('/admin/tours'),
+  ADMIN_TOURS_CREATE: withBase('/admin/tours/create'),
+  ADMIN_FLIGHTS: withBase('/admin/flights'),
+  ADMIN_FLIGHTS_CREATE: withBase('/admin/flights/create'),
 };
 
 export const TRIP_TYPE = {

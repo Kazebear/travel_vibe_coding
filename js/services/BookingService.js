@@ -25,7 +25,7 @@ export async function createBookingFromCart(customer, userId) {
 
   const total = getCartTotal();
   const bookingCode = generateBookingCode();
-  const bookingId = BookingRepository.createBooking({
+  const bookingId = await BookingRepository.createBooking({
     booking_code: bookingCode,
     user_id: userId || null,
     customer_name: customer.fullName,
@@ -36,8 +36,12 @@ export async function createBookingFromCart(customer, userId) {
     total_amount: total,
   });
 
-  cart.flights.forEach((f) => BookingRepository.addBookingFlight(bookingId, f.flightId, f.fareClass, f.price));
-  cart.tours.forEach((t) => BookingRepository.addBookingTour(bookingId, t.tourId, t.price));
+  for (const f of cart.flights) {
+    await BookingRepository.addBookingFlight(bookingId, f.flightId, f.fareClass, f.price);
+  }
+  for (const t of cart.tours) {
+    await BookingRepository.addBookingTour(bookingId, t.tourId, t.price);
+  }
 
   const summary = {
     bookingCode,

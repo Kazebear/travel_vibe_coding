@@ -1,129 +1,140 @@
-import { query, queryOne, insert, run } from '../database/database.js';
+import { supabase } from '../database/supabaseClient.js';
 
-const BASE_SELECT = `
-  SELECT t.*, al.name AS airline_name, al.code AS airline_code
-  FROM tours t
-  LEFT JOIN airlines al ON al.id = t.airline_id
-`;
+const SELECT = `*, airlines(name,code)`;
 
-export function getTourById(id) {
-  return queryOne(`${BASE_SELECT} WHERE t.id = ?`, [id]);
+function flattenTour(row) {
+  if (!row) return row;
+  const { airlines, ...rest } = row;
+  return {
+    ...rest,
+    airline_name: airlines?.name,
+    airline_code: airlines?.code,
+  };
 }
 
-export function getFeaturedTours(limit = 8) {
-  return query(`${BASE_SELECT} WHERE t.featured = 1 ORDER BY t.id ASC LIMIT ?`, [limit]);
+export async function getTourById(id) {
+  const { data, error } = await supabase.from('tours').select(SELECT).eq('id', id).single();
+  if (error) return null;
+  return flattenTour(data);
 }
 
-export function getTourItinerary(tourId) {
-  return query('SELECT * FROM tour_itineraries WHERE tour_id = ? ORDER BY day_number ASC', [tourId]);
+export async function getFeaturedTours(limit = 8) {
+  const { data, error } = await supabase.from('tours').select(SELECT).eq('featured', true).order('id', { ascending: true }).limit(limit);
+  if (error) throw error;
+  return (data || []).map(flattenTour);
 }
 
-export function searchTours(filters = {}) {
-  const clauses = [];
-  const params = [];
+export async function getTourItinerary(tourId) {
+  const { data, error } = await supabase
+    .from('tour_itineraries')
+    .select('*')
+    .eq('tour_id', tourId)
+    .order('day_number', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
 
-  if (filters.destination) {
-    clauses.push('(t.destination LIKE ? OR t.country LIKE ?)');
-    params.push(`%${filters.destination}%`, `%${filters.destination}%`);
-  }
-  if (filters.country) {
-    clauses.push('t.country = ?');
-    params.push(filters.country);
-  }
-  if (filters.operator) {
-    clauses.push('t.operator = ?');
-    params.push(filters.operator);
-  }
-  if (filters.airlineIds && filters.airlineIds.length) {
-    clauses.push(`t.airline_id IN (${filters.airlineIds.map(() => '?').join(',')})`);
-    params.push(...filters.airlineIds);
-  }
-  if (filters.days) {
-    clauses.push('t.days = ?');
-    params.push(filters.days);
-  }
+export async function searchTours(filters = {}) {
+  let q = supabase.from('tours').select(SELECT);
+
+  if (filters.destination) q = q.or(`destination.ilike.%${filters.destination}%,country.ilike.%${filters.destination}%`);
+  if (filters.country) q = q.eq('country', filters.country);
+  if (filters.operator) q = q.eq('operator', filters.operator);
+  if (filters.airlineIds && filters.airlineIds.length) q = q.in('airline_id', filters.airlineIds);
+  if (filters.days) q = q.eq('days', filters.days);
   if (filters.timeSlots && filters.timeSlots.length) {
-    const slotClauses = filters.timeSlots.map(() => `(CAST(substr(t.departure_time,1,2) AS INTEGER) >= ? AND CAST(substr(t.departure_time,1,2) AS INTEGER) < ?)`);
-    clauses.push(`(${slotClauses.join(' OR ')})`);
-    filters.timeSlots.forEach((s) => params.push(s.from, s.to));
+    const orExpr = filters.timeSlots
+      .map((s) => `and(departure_time.gte.${String(s.from).padStart(2, '0')}:00,departure_time.lt.${String(s.to).padStart(2, '0')}:00)`)
+      .join(',');
+    q = q.or(orExpr);
   }
 
-  let sql = BASE_SELECT;
-  if (clauses.length) sql += ' WHERE ' + clauses.join(' AND ');
+  if (filters.sort === 'price_asc') q = q.order('price', { ascending: true });
+  else if (filters.sort === 'price_desc') q = q.order('price', { ascending: false });
+  else q = q.order('departure_date', { ascending: true });
 
-  if (filters.sort === 'price_asc') sql += ' ORDER BY t.price ASC';
-  else if (filters.sort === 'price_desc') sql += ' ORDER BY t.price DESC';
-  else sql += ' ORDER BY t.departure_date ASC';
-
-  return query(sql, params);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data || []).map(flattenTour);
 }
 
-export function countTours() {
-  return queryOne('SELECT COUNT(*) as count FROM tours').count;
+export async function countTours() {
+  const { count, error } = await supabase.from('tours').select('*', { count: 'exact', head: true });
+  if (error) throw error;
+  return count || 0;
 }
 
-export function getToursPage(page, pageSize) {
-  const offset = (page - 1) * pageSize;
-  return query(`${BASE_SELECT} ORDER BY t.id DESC LIMIT ? OFFSET ?`, [pageSize, offset]);
+export async function getToursPage(page, pageSize) {
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, error } = await supabase.from('tours').select(SELECT).order('id', { ascending: false }).range(from, to);
+  if (error) throw error;
+  return (data || []).map(flattenTour);
 }
 
-export function getDistinctOperators() {
-  return query('SELECT DISTINCT operator FROM tours ORDER BY operator ASC').map((r) => r.operator);
+export async function getDistinctOperators() {
+  const { data, error } = await supabase.from('tours').select('operator').order('operator', { ascending: true });
+  if (error) throw error;
+  return Array.from(new Set((data || []).map((r) => r.operator)));
 }
 
-export function createTour(data, itineraryDays) {
-  const tourId = insert(
-    `INSERT INTO tours (code, name, operator, origin, destination, country, departure_date, departure_time, days, nights, airline_id, aircraft, price, thumbnail, description, included_services, excluded_services, status, featured, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      data.code, data.name, data.operator, data.origin, data.destination, data.country,
-      data.departure_date, data.departure_time, data.days, data.nights, data.airline_id || null,
-      data.aircraft || null, data.price, data.thumbnail, data.description,
-      data.included_services, data.excluded_services, data.status || 'available',
-      data.featured ? 1 : 0, new Date().toISOString(),
-    ]
-  );
-
-  (itineraryDays || []).forEach((day) => {
-    insert(
-      `INSERT INTO tour_itineraries (tour_id, day_number, title, description, meals, accommodation) VALUES (?, ?, ?, ?, ?, ?)`,
-      [tourId, day.day_number, day.title, day.description, day.meals || '', day.accommodation || '']
-    );
-  });
-
-  return tourId;
+function tourPayload(data) {
+  return {
+    code: data.code,
+    name: data.name,
+    operator: data.operator,
+    origin: data.origin,
+    destination: data.destination,
+    country: data.country,
+    departure_date: data.departure_date,
+    departure_time: data.departure_time,
+    days: data.days,
+    nights: data.nights,
+    airline_id: data.airline_id || null,
+    aircraft: data.aircraft || null,
+    price: data.price,
+    thumbnail: data.thumbnail,
+    description: data.description,
+    included_services: data.included_services,
+    excluded_services: data.excluded_services,
+    status: data.status || 'available',
+    featured: !!data.featured,
+  };
 }
 
-export function updateTourStatus(id, status) {
-  run('UPDATE tours SET status = ? WHERE id = ?', [status, id]);
+async function insertItinerary(tourId, itineraryDays) {
+  const rows = (itineraryDays || []).map((day) => ({
+    tour_id: tourId,
+    day_number: day.day_number,
+    title: day.title,
+    description: day.description,
+    meals: day.meals || '',
+    accommodation: day.accommodation || '',
+  }));
+  if (!rows.length) return;
+  const { error } = await supabase.from('tour_itineraries').insert(rows);
+  if (error) throw error;
 }
 
-export function updateTour(id, data, itineraryDays) {
-  run(
-    `UPDATE tours SET code = ?, name = ?, operator = ?, origin = ?, destination = ?, country = ?,
-      departure_date = ?, departure_time = ?, days = ?, nights = ?, airline_id = ?, aircraft = ?,
-      price = ?, thumbnail = ?, description = ?, included_services = ?, excluded_services = ?,
-      status = ?, featured = ?
-     WHERE id = ?`,
-    [
-      data.code, data.name, data.operator, data.origin, data.destination, data.country,
-      data.departure_date, data.departure_time, data.days, data.nights, data.airline_id || null,
-      data.aircraft || null, data.price, data.thumbnail, data.description,
-      data.included_services, data.excluded_services, data.status || 'available',
-      data.featured ? 1 : 0, id,
-    ]
-  );
-
-  run('DELETE FROM tour_itineraries WHERE tour_id = ?', [id]);
-  (itineraryDays || []).forEach((day) => {
-    insert(
-      `INSERT INTO tour_itineraries (tour_id, day_number, title, description, meals, accommodation) VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, day.day_number, day.title, day.description, day.meals || '', day.accommodation || '']
-    );
-  });
+export async function createTour(data, itineraryDays) {
+  const { data: row, error } = await supabase.from('tours').insert(tourPayload(data)).select('id').single();
+  if (error) throw error;
+  await insertItinerary(row.id, itineraryDays);
+  return row.id;
 }
 
-export function deleteTour(id) {
-  run('DELETE FROM tour_itineraries WHERE tour_id = ?', [id]);
-  run('DELETE FROM tours WHERE id = ?', [id]);
+export async function updateTour(id, data, itineraryDays) {
+  const { error } = await supabase.from('tours').update(tourPayload(data)).eq('id', id);
+  if (error) throw error;
+
+  const { error: delError } = await supabase.from('tour_itineraries').delete().eq('tour_id', id);
+  if (delError) throw delError;
+  await insertItinerary(id, itineraryDays);
+}
+
+export async function deleteTour(id) {
+  const { error: delError } = await supabase.from('tour_itineraries').delete().eq('tour_id', id);
+  if (delError) throw delError;
+  const { error } = await supabase.from('tours').delete().eq('id', id);
+  if (error) throw error;
 }

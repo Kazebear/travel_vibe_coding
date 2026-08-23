@@ -5,9 +5,9 @@
 **Tên website:** Du Lịch Việt
 **Tên tiếng Anh:** TravelViet
 **Loại ứng dụng:** Website đặt chuyến bay và tour du lịch
-**Kiến trúc:** Frontend-only / Single Page Application
-**Backend:** Không có
-**Database:** SQLite chạy trong trình duyệt bằng SQLite WASM/sql.js
+**Kiến trúc:** Frontend-only / Single Page Application (gọi thẳng Supabase, không có backend riêng)
+**Backend:** Không có — trình duyệt gọi thẳng Supabase (PostgREST + Auth) qua publishable key
+**Database:** Supabase Postgres (trước đây là SQLite WASM/sql.js chạy trong trình duyệt — xem [supabase/schema.sql](supabase/schema.sql) và nhật ký ở [project.md](project.md))
 **Ngôn ngữ:** HTML5, CSS3, Vanilla JavaScript
 **Responsive:** Desktop, Tablet, Mobile
 
@@ -48,12 +48,12 @@ Không sử dụng backend.
 
 ### Database
 
-Sử dụng SQLite phía client:
+Sử dụng Supabase (Postgres + Auth) làm nơi lưu trữ dùng chung, gọi thẳng từ trình duyệt qua `@supabase/supabase-js`:
 
-* SQLite WASM hoặc sql.js.
-* Database được khởi tạo khi ứng dụng chạy.
-* Seed dữ liệu mẫu tự động.
-* Có repository/service layer để JavaScript giao tiếp với SQLite.
+* Schema, RLS policy, trigger, RPC function: [supabase/schema.sql](supabase/schema.sql) (chạy 1 lần trong Supabase SQL Editor).
+* Đăng nhập/đăng ký dùng Supabase Auth thật (không tự hash password nữa).
+* Có repository/service layer để JavaScript giao tiếp với Supabase (giữ nguyên kiến trúc, chỉ đổi nơi lưu trữ — xem [ARCHITECTURE.md](ARCHITECTURE.md)).
+* Chi tiết quyết định + các bước setup thủ công trên Supabase Dashboard: xem [project.md](project.md).
 
 Không được hard-code toàn bộ dữ liệu trực tiếp trong HTML.
 

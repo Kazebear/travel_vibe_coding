@@ -1,6 +1,8 @@
-# TravelViet — SQLite Database Specification
+# TravelViet — Database Specification
 
-## 1. Database
+> **Đã chuyển sang Supabase Postgres.** Schema/RLS/trigger/RPC thật nằm ở [supabase/schema.sql](supabase/schema.sql) — chạy 1 lần trong Supabase SQL Editor. Nội dung SQLite bên dưới chỉ còn giá trị tham khảo ý nghĩa từng bảng/field (tên bảng `users` cũ nay là `profiles`, gắn với Supabase Auth); cú pháp SQL cụ thể không còn áp dụng. Xem quyết định + các bước setup thủ công trong [project.md](project.md).
+
+## 1. Database (lịch sử — SQLite, đã thay thế)
 
 Tên database:
 

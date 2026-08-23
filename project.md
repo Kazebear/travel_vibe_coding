@@ -151,3 +151,33 @@ Bắt buộc dùng flag `-s` (SPA fallback) vì router dùng History API — ser
 | 2026-08-22 | Build toàn bộ website (DB, repositories, services, 14 trang), test end-to-end, sửa 3 bug (deep-link, mobile overflow, filter ngày) |
 | 2026-08-22 | Thêm validation SĐT/Địa chỉ cho trang Đăng ký |
 | 2026-08-22 | Thêm tính năng Sửa Tour/Chuyến bay cho Admin |
+| 2026-08-23 | Kết nối Supabase — xem mục 10 |
+
+---
+
+## 10. Kết nối Supabase (2026-08-23)
+
+Chuyển từ SQLite/sql.js (chạy trong trình duyệt, dữ liệu riêng từng máy) sang **Supabase Postgres** làm nơi lưu trữ dùng chung. Vẫn không có backend tự viết — trình duyệt gọi thẳng Supabase qua `@supabase/supabase-js` bằng publishable/anon key, phân quyền bằng Row Level Security (RLS).
+
+Project Supabase: `sghzjlrpdgyrmfeejsgc`.
+
+### Quyết định
+
+* **Dùng Supabase Auth thật** thay vì bảng `users` tự viết + hash SHA-256 — anon key không mang danh tính đăng nhập ở tầng database, chỉ Supabase Auth mới cho phép viết RLS dựa trên `auth.uid()`. Đổi tên bảng `users` → `profiles` (gắn 1-1 với `auth.users`).
+* Giữ nguyên kiến trúc phân lớp Page → Service → Repository → DB (xem [ARCHITECTURE.md](ARCHITECTURE.md)); chỉ Repository + AuthService đổi cách nói chuyện với dữ liệu, Page/Component chủ yếu chỉ thêm `await` (mọi lệnh gọi DB giờ là bất đồng bộ qua mạng thay vì đồng bộ trong bộ nhớ).
+* Các query GROUP BY phức tạp cho Dashboard (top hãng bay, top quốc gia...) chuyển thành RPC function (`fn_top_airlines`, `fn_top_tour_countries`, ...) vì PostgREST query builder không hỗ trợ GROUP BY trực tiếp.
+* Đăng nhập bằng "Email / Username" (giữ nguyên UX cũ) cần thêm RPC `fn_email_by_username` vì Supabase Auth chỉ đăng nhập bằng email.
+* Giới hạn độ dài password tối thiểu đổi từ 5 → 6 ký tự để khớp mức tối thiểu mặc định của Supabase Auth.
+
+### Các bước setup thủ công trên Supabase Dashboard (chỉ làm 1 lần)
+
+1. SQL Editor → chạy toàn bộ [supabase/schema.sql](supabase/schema.sql).
+2. Authentication → Providers → Email → tắt **Confirm email** (để tài khoản demo đăng nhập được ngay, không cần xác nhận qua email).
+3. Chạy script Node tạo 2 tài khoản demo (xem `scripts/` do Claude cung cấp lúc thực hiện, không nằm trong repo vì chỉ chạy 1 lần) → tạo `admin@travel.com`/`Admin123!` và `user@travel.com`/`User123!`.
+4. SQL Editor → chạy: `update profiles set role='admin' where username='admin';` để nâng quyền tài khoản admin (không thể tự làm qua anon key vì cột `role` bị revoke UPDATE khỏi user thường — xem RLS trong schema.sql).
+5. Chạy script Node seed dữ liệu mẫu (đăng nhập bằng tài khoản admin để thoả RLS) → 10 hãng bay, 11 sân bay, 100 chuyến bay, 115 tour + lịch trình, ~260 booking.
+
+### Giới hạn đã biết
+
+* Insert `bookings`/`booking_flights`/`booking_tours` mở công khai (giữ đúng luồng đặt vé không cần đăng nhập) → về lý thuyết ai cũng chèn được booking rác vào DB thật — giới hạn cố hữu của kiến trúc không backend, không riêng do Supabase.
+* Email đặt lại mật khẩu (`resetPasswordForEmail`) dùng SMTP mặc định của Supabase (free tier, giới hạn số lượng/giờ) — đủ cho demo.

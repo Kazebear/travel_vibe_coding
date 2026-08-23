@@ -8,7 +8,7 @@ export function isValidUsername(value) {
 
 export function isValidPassword(value) {
   const v = String(value || '');
-  return v.length >= 5 && v.length <= 15;
+  return v.length >= 6 && v.length <= 15;
 }
 
 export function isValidPhone(value) {

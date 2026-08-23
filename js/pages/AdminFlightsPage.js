@@ -13,15 +13,15 @@ function renderPage(root, params) {
   const contentEl = renderAdminShell(root, ROUTES.ADMIN_FLIGHTS, skeletonTable(8));
   if (!contentEl) return;
   const page = Math.max(1, Number(params.page) || 1);
-  setTimeout(() => draw(contentEl, page), 150);
+  draw(contentEl, page);
 }
 
-function draw(contentEl, page) {
+async function draw(contentEl, page) {
   try {
-    const total = countFlights();
+    const total = await countFlights();
     const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE_ADMIN));
     page = Math.min(page, totalPages);
-    const flights = getFlightsPage(page, PAGE_SIZE_ADMIN);
+    const flights = await getFlightsPage(page, PAGE_SIZE_ADMIN);
 
     const pagination = renderPagination(page, totalPages, (p) => navigate(buildUrl(ROUTES.ADMIN_FLIGHTS, { page: p })));
 
@@ -78,9 +78,13 @@ function draw(contentEl, page) {
       btn.addEventListener('click', async () => {
         const ok = await showConfirm({ title: 'Xóa chuyến bay', message: `Bạn có chắc muốn xóa chuyến bay #${btn.dataset.delete}?`, danger: true, confirmText: 'Xóa' });
         if (ok) {
-          deleteFlight(Number(btn.dataset.delete));
-          showToast('Đã xóa chuyến bay.', 'success');
-          draw(contentEl, page);
+          try {
+            await deleteFlight(Number(btn.dataset.delete));
+            showToast('Đã xóa chuyến bay.', 'success');
+            draw(contentEl, page);
+          } catch (e) {
+            showToast('Không thể xóa: chuyến bay này đã có khách đặt.', 'error');
+          }
         }
       });
     });

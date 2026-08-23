@@ -7,11 +7,28 @@ import { renderTourCard } from '../components/TourCard.js';
 import { setSearchParams } from '../state.js';
 import { todayISO, addDaysISO } from '../utils/formatDate.js';
 import { airlineColor } from '../utils/airlineVisual.js';
+import { skeletonGrid } from '../utils/loading.js';
 
 function renderPage(root) {
-  const airports = getAllAirports();
-  const airlines = getAllAirlines();
-  const tours = getFeaturedTours(8);
+  root.innerHTML = `<div class="container" style="padding:48px 0">${skeletonGrid(4, 220)}</div>`;
+  draw(root);
+}
+
+async function draw(root) {
+  let airports = [];
+  let airlines = [];
+  let tours = [];
+  let error = null;
+  try {
+    [airports, airlines, tours] = await Promise.all([getAllAirports(), getAllAirlines(), getFeaturedTours(8)]);
+  } catch (e) {
+    error = e;
+  }
+
+  if (error) {
+    root.innerHTML = `<div class="container" style="padding:48px 0"><div class="state-box"><div class="state-icon">⚠️</div>Không thể tải dữ liệu. Vui lòng thử lại.</div></div>`;
+    return;
+  }
 
   const airportOptions = airports.map((a) => `<option value="${a.code}">${a.city} (${a.code})</option>`).join('');
 

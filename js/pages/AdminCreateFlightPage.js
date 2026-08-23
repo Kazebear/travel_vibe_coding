@@ -7,6 +7,7 @@ import { getAllAirports } from '../repositories/AirportRepository.js';
 import { required } from '../utils/validation.js';
 import { showToast } from '../components/Toast.js';
 import { todayISO } from '../utils/formatDate.js';
+import { skeletonTable } from '../utils/loading.js';
 
 function pad2(n) {
   return String(n).padStart(2, '0');
@@ -18,14 +19,14 @@ function addMinutesToTime(time, duration) {
   return `${pad2(Math.floor(total / 60))}:${pad2(total % 60)}`;
 }
 
-function renderPage(root, params) {
+async function renderPage(root, params) {
   const editId = params.id ? Number(params.id) : null;
-  const contentEl = renderAdminShell(root, ROUTES.ADMIN_FLIGHTS_CREATE, '');
+  const contentEl = renderAdminShell(root, ROUTES.ADMIN_FLIGHTS_CREATE, skeletonTable(4));
   if (!contentEl) return;
 
   let flight = null;
   if (editId) {
-    flight = getFlightById(editId);
+    flight = await getFlightById(editId);
     if (!flight) {
       contentEl.innerHTML = `<div class="state-box"><div class="state-icon">⚠️</div>Không tìm thấy chuyến bay cần sửa.<div class="mt-4"><a href="${ROUTES.ADMIN_FLIGHTS}" data-link class="btn btn-primary">Quay lại danh sách</a></div></div>`;
       return;
@@ -33,8 +34,7 @@ function renderPage(root, params) {
   }
   const isEdit = !!flight;
 
-  const airlines = getAllAirlines();
-  const airports = getAllAirports();
+  const [airlines, airports] = await Promise.all([getAllAirlines(), getAllAirports()]);
   const airportOptions = (selectedId) =>
     airports.map((a) => `<option value="${a.id}" ${selectedId === a.id ? 'selected' : ''}>${a.city} (${a.code})</option>`).join('');
 
@@ -125,7 +125,7 @@ function renderPage(root, params) {
     </form>
   `;
 
-  contentEl.querySelector('#createFlightForm').addEventListener('submit', (e) => {
+  contentEl.querySelector('#createFlightForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const errorEl = contentEl.querySelector('#createFlightError');
     errorEl.textContent = '';
@@ -171,10 +171,10 @@ function renderPage(root, params) {
 
     try {
       if (isEdit) {
-        updateFlight(editId, data);
+        await updateFlight(editId, data);
         showToast('Đã cập nhật chuyến bay.', 'success');
       } else {
-        createFlight(data);
+        await createFlight(data);
         showToast('Đã tạo chuyến bay mới.', 'success');
       }
       navigate(ROUTES.ADMIN_FLIGHTS);

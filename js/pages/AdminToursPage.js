@@ -13,16 +13,16 @@ function renderPage(root, params) {
   const contentEl = renderAdminShell(root, ROUTES.ADMIN_TOURS, skeletonTable(8));
   if (!contentEl) return;
   const page = Math.max(1, Number(params.page) || 1);
-  setTimeout(() => draw(contentEl, page), 150);
+  draw(contentEl, page);
 }
 
-function draw(contentEl, page) {
-  let total, tours, error = null;
+async function draw(contentEl, page) {
+  let total, tours;
   try {
-    total = countTours();
+    total = await countTours();
     const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE_ADMIN));
     page = Math.min(page, totalPages);
-    tours = getToursPage(page, PAGE_SIZE_ADMIN);
+    tours = await getToursPage(page, PAGE_SIZE_ADMIN);
 
     const pagination = renderPagination(page, totalPages, (p) => navigate(buildUrl(ROUTES.ADMIN_TOURS, { page: p })));
 
@@ -76,9 +76,13 @@ function draw(contentEl, page) {
       btn.addEventListener('click', async () => {
         const ok = await showConfirm({ title: 'Xóa tour', message: `Bạn có chắc muốn xóa tour #${btn.dataset.delete}?`, danger: true, confirmText: 'Xóa' });
         if (ok) {
-          deleteTour(Number(btn.dataset.delete));
-          showToast('Đã xóa tour.', 'success');
-          draw(contentEl, page);
+          try {
+            await deleteTour(Number(btn.dataset.delete));
+            showToast('Đã xóa tour.', 'success');
+            draw(contentEl, page);
+          } catch (e) {
+            showToast('Không thể xóa: tour này đã có khách đặt.', 'error');
+          }
         }
       });
     });

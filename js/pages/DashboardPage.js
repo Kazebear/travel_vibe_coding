@@ -20,15 +20,14 @@ function kpiCard(icon, value, label, color) {
 function renderPage(root) {
   const contentEl = renderAdminShell(root, ROUTES.DASHBOARD, skeletonTable(6));
   if (!contentEl) return;
-  setTimeout(() => draw(contentEl), 150);
+  draw(contentEl);
 }
 
-function draw(contentEl) {
-  let kpis, topAirlines, topCountries, error = null;
+async function draw(contentEl) {
+  let kpis, topAirlines, topCountries;
+  let error = null;
   try {
-    kpis = getDashboardKpis();
-    topAirlines = getTopAirlines(10);
-    topCountries = getTopCountries(10);
+    [kpis, topAirlines, topCountries] = await Promise.all([getDashboardKpis(), getTopAirlines(10), getTopCountries(10)]);
   } catch (e) {
     error = e;
   }

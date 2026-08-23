@@ -18,12 +18,14 @@ Browser
 │
 ├── Repository Layer
 │       │
-│       └── SQLite WASM / sql.js
+│       └── Supabase JS client (PostgREST + Auth)
+│                   │
+│                   └── Supabase Postgres (schema: supabase/schema.sql, bảo vệ bằng RLS)
 │
-└── Browser Storage
+└── localStorage (chỉ cho cart/UI state — session do Supabase Auth quản lý)
 ```
 
-Không có server backend.
+Không có server backend tự viết. Trình duyệt gọi thẳng Supabase bằng publishable/anon key; toàn bộ phân quyền nằm ở Row Level Security trên Postgres, không ở tầng JavaScript.
 
 ---
 
@@ -245,14 +247,12 @@ AuthService.logout()
 
 # 7. Security
 
-Prototype chạy client-side nên không thể bảo mật như ứng dụng có backend.
+Không có backend riêng nên phân quyền nằm hoàn toàn ở Supabase Row Level Security (RLS), không phải ở tầng JavaScript — xem [supabase/schema.sql](supabase/schema.sql).
 
-Tuy nhiên phải:
-
-* Không lưu password plain text nếu có thể.
-* Hash password bằng Web Crypto API.
-* Không lưu secret/API key.
-* Không đưa EmailJS private secret vào frontend.
+* Password do Supabase Auth quản lý (không tự hash/lưu password nữa).
+* Publishable/anon key được thiết kế để public trong frontend — bảo vệ bằng RLS, không phải bằng việc giấu key. Không dùng service_role key ở bất kỳ đâu trong code ứng dụng.
+* Ghi dữ liệu (tạo/sửa/xóa tour, chuyến bay) chỉ admin qua RLS (`is_admin()`), không dựa vào việc ẩn nút trên UI.
+* `bookings`/`booking_flights`/`booking_tours` cho phép insert công khai (giữ luồng đặt vé không cần đăng nhập) — giới hạn cố hữu của kiến trúc không backend.
 * Validate tất cả input.
 * Escape dữ liệu khi render HTML.
 * Không dùng `innerHTML` với dữ liệu người dùng nếu không cần.

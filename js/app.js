@@ -1,4 +1,4 @@
-import { initDatabase } from './database/database.js';
+import { initAuth } from './database/supabaseClient.js';
 import { initRouter } from './router.js';
 import { mountHeader } from './components/Header.js';
 import { mountFooter } from './components/Footer.js';
@@ -26,14 +26,14 @@ async function bootstrap() {
   const loadingScreen = document.getElementById('loading-screen');
 
   try {
-    await initDatabase();
+    await initAuth();
   } catch (err) {
-    console.error('Không thể khởi tạo cơ sở dữ liệu:', err);
+    console.error('Không thể kết nối Supabase:', err);
     if (loadingScreen) {
       loadingScreen.innerHTML = `
         <div class="state-box">
           <div class="state-icon">⚠️</div>
-          Không thể khởi tạo cơ sở dữ liệu. Vui lòng tải lại trang.
+          Không thể kết nối đến máy chủ. Vui lòng tải lại trang.
         </div>
       `;
     }

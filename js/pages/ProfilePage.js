@@ -5,19 +5,22 @@ import { getUserById, updateUser } from '../repositories/UserRepository.js';
 import { isValidPhone, required } from '../utils/validation.js';
 import { formatDate } from '../utils/formatDate.js';
 import { showToast } from '../components/Toast.js';
+import { skeletonTable } from '../utils/loading.js';
 
 function userInitial(user) {
   const name = user.full_name || user.username || '?';
   return name.trim().charAt(0).toUpperCase();
 }
 
-function renderPage(root) {
+async function renderPage(root) {
   const sessionUser = getCurrentUser();
   if (!sessionUser) {
     navigate(ROUTES.LOGIN, { replace: true });
     return;
   }
-  const user = getUserById(sessionUser.id) || sessionUser;
+  root.innerHTML = `<div class="container" style="padding:32px 0">${skeletonTable(3)}</div>`;
+  const profile = await getUserById(sessionUser.id);
+  const user = { ...sessionUser, ...profile };
 
   root.innerHTML = `
     <div class="page-header">
@@ -73,7 +76,7 @@ function renderPage(root) {
     </div>
   `;
 
-  root.querySelector('#profileForm').addEventListener('submit', (e) => {
+  root.querySelector('#profileForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const phone = root.querySelector('#phone').value.trim();
     const errorEl = root.querySelector('#phoneError');
@@ -96,11 +99,15 @@ function renderPage(root) {
       return;
     }
 
-    updateUser(user.id, data);
-    const updated = getUserById(user.id);
-    refreshCurrentUser(updated);
-    showToast('Đã cập nhật thông tin cá nhân.', 'success');
-    renderPage(root);
+    try {
+      await updateUser(user.id, data);
+      const updated = await getUserById(user.id);
+      refreshCurrentUser(updated);
+      showToast('Đã cập nhật thông tin cá nhân.', 'success');
+      renderPage(root);
+    } catch (err) {
+      showToast(err.message || 'Không thể cập nhật thông tin.', 'error');
+    }
   });
 }
 

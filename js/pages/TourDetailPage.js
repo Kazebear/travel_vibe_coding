@@ -5,6 +5,7 @@ import { addTourToCart } from '../services/CartService.js';
 import { formatCurrency } from '../utils/formatCurrency.js';
 import { formatDate } from '../utils/formatDate.js';
 import { showToast } from '../components/Toast.js';
+import { skeletonList } from '../utils/loading.js';
 
 function renderNotFound(root) {
   root.innerHTML = `
@@ -43,13 +44,25 @@ function renderItinerary(days) {
   `;
 }
 
-function renderPage(root, params) {
-  const tour = getTourById(params.id);
+async function renderPage(root, params) {
+  root.innerHTML = `<div class="container" style="padding:32px 0">${skeletonList(1, 380)}</div>`;
+
+  let tour = null;
+  try {
+    tour = await getTourById(params.id);
+  } catch (e) {
+    tour = null;
+  }
   if (!tour) {
     renderNotFound(root);
     return;
   }
-  const itinerary = getTourItinerary(tour.id);
+  let itinerary = [];
+  try {
+    itinerary = await getTourItinerary(tour.id);
+  } catch (e) {
+    itinerary = [];
+  }
 
   root.innerHTML = `
     <div class="detail-hero" style="background:linear-gradient(rgba(23,32,51,0.55),rgba(23,32,51,0.55)),url('${tour.thumbnail}') center/cover;color:#fff">

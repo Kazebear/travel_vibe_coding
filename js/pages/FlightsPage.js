@@ -94,16 +94,16 @@ function renderPage(root, params) {
     </div>
   `;
 
-  setTimeout(() => draw(), 150);
+  draw();
 
-  function draw() {
-    const airlines = getAllAirlines();
+  async function draw() {
     const timeSlotObjs = filterState.timeSlots.map((id) => DEPARTURE_TIME_SLOTS.find((s) => s.id === id));
 
+    let airlines = [];
     let flights = [];
     let error = null;
     try {
-      flights = searchFlights({ ...filterState, timeSlots: timeSlotObjs });
+      [airlines, flights] = await Promise.all([getAllAirlines(), searchFlights({ ...filterState, timeSlots: timeSlotObjs })]);
     } catch (e) {
       error = e;
     }

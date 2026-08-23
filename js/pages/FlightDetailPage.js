@@ -5,6 +5,7 @@ import { addFlightToCart } from '../services/CartService.js';
 import { formatCurrency } from '../utils/formatCurrency.js';
 import { formatDate, formatDuration } from '../utils/formatDate.js';
 import { showToast } from '../components/Toast.js';
+import { skeletonList } from '../utils/loading.js';
 
 function renderNotFound(root) {
   root.innerHTML = `
@@ -42,8 +43,15 @@ function fareCard(type, flight) {
   `;
 }
 
-function renderPage(root, params) {
-  const flight = getFlightById(params.id);
+async function renderPage(root, params) {
+  root.innerHTML = `<div class="container" style="padding:32px 0">${skeletonList(1, 320)}</div>`;
+
+  let flight = null;
+  try {
+    flight = await getFlightById(params.id);
+  } catch (e) {
+    flight = null;
+  }
   if (!flight) {
     renderNotFound(root);
     return;

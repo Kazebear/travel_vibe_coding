@@ -1,9 +1,17 @@
-import { query, queryOne } from '../database/database.js';
+import { supabase } from '../database/supabaseClient.js';
 
-export function getAllAirports() {
-  return query('SELECT * FROM airports ORDER BY country ASC, city ASC');
+export async function getAllAirports() {
+  const { data, error } = await supabase
+    .from('airports')
+    .select('*')
+    .order('country', { ascending: true })
+    .order('city', { ascending: true });
+  if (error) throw error;
+  return data || [];
 }
 
-export function getAirportByCode(code) {
-  return queryOne('SELECT * FROM airports WHERE code = ?', [code]);
+export async function getAirportByCode(code) {
+  const { data, error } = await supabase.from('airports').select('*').eq('code', code).single();
+  if (error) return null;
+  return data;
 }

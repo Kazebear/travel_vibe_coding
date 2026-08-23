@@ -76,8 +76,8 @@ export function mountHeader(root) {
     }
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
-      logoutBtn.addEventListener('click', () => {
-        logout();
+      logoutBtn.addEventListener('click', async () => {
+        await logout();
         showToast('Đã đăng xuất.', 'success');
         navigate(ROUTES.HOME);
       });

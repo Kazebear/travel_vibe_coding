@@ -42,7 +42,7 @@ function renderPage(root) {
           <div class="form-group">
             <label class="form-label" for="password">Password</label>
             <input type="password" id="password" class="form-input" required />
-            <div class="form-hint">5-15 ký tự.</div>
+            <div class="form-hint">6-15 ký tự.</div>
             <div class="form-error" data-error="password"></div>
           </div>
           <div class="form-group">
@@ -86,7 +86,7 @@ function renderPage(root) {
     if (!isValidEmail(data.email)) { setError('email', 'Email không hợp lệ.'); hasError = true; }
     if (!isValidPhone10(data.phone)) { setError('phone', 'Số điện thoại phải gồm đúng 10 chữ số.'); hasError = true; }
     if (!isValidAddress(data.address, 100)) { setError('address', 'Địa chỉ không được vượt quá 100 ký tự.'); hasError = true; }
-    if (!isValidPassword(data.password)) { setError('password', 'Password phải từ 5-15 ký tự.'); hasError = true; }
+    if (!isValidPassword(data.password)) { setError('password', 'Password phải từ 6-15 ký tự.'); hasError = true; }
     if (data.password !== data.confirmPassword) { setError('confirmPassword', 'Xác nhận mật khẩu không khớp.'); hasError = true; }
 
     if (hasError) {

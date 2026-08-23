@@ -6,6 +6,7 @@ import { getAllAirlines } from '../repositories/AirlineRepository.js';
 import { required } from '../utils/validation.js';
 import { showToast } from '../components/Toast.js';
 import { todayISO } from '../utils/formatDate.js';
+import { skeletonTable } from '../utils/loading.js';
 
 function itineraryDayFields(dayNumber, values = {}) {
   return `
@@ -39,25 +40,25 @@ function renderItineraryEditor(container, count, valuesByDay = {}) {
   container.innerHTML = items.join('');
 }
 
-function renderPage(root, params) {
+async function renderPage(root, params) {
   const editId = params.id ? Number(params.id) : null;
-  const contentEl = renderAdminShell(root, ROUTES.ADMIN_TOURS_CREATE, '');
+  const contentEl = renderAdminShell(root, ROUTES.ADMIN_TOURS_CREATE, skeletonTable(4));
   if (!contentEl) return;
 
   let tour = null;
   let itineraryValuesByDay = {};
   if (editId) {
-    tour = getTourById(editId);
+    tour = await getTourById(editId);
     if (!tour) {
       contentEl.innerHTML = `<div class="state-box"><div class="state-icon">⚠️</div>Không tìm thấy tour cần sửa.<div class="mt-4"><a href="${ROUTES.ADMIN_TOURS}" data-link class="btn btn-primary">Quay lại danh sách</a></div></div>`;
       return;
     }
-    getTourItinerary(editId).forEach((day) => {
+    (await getTourItinerary(editId)).forEach((day) => {
       itineraryValuesByDay[day.day_number] = day;
     });
   }
 
-  const airlines = getAllAirlines();
+  const airlines = await getAllAirlines();
   const isEdit = !!tour;
 
   contentEl.innerHTML = `
@@ -171,7 +172,7 @@ function renderPage(root, params) {
     renderItineraryEditor(itineraryContainer, n, itineraryValuesByDay);
   });
 
-  contentEl.querySelector('#createTourForm').addEventListener('submit', (e) => {
+  contentEl.querySelector('#createTourForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const errorEl = contentEl.querySelector('#createTourError');
     errorEl.textContent = '';
@@ -214,10 +215,10 @@ function renderPage(root, params) {
 
     try {
       if (isEdit) {
-        updateTour(editId, data, itineraryDays);
+        await updateTour(editId, data, itineraryDays);
         showToast('Đã cập nhật tour.', 'success');
       } else {
-        createTour(data, itineraryDays);
+        await createTour(data, itineraryDays);
         showToast('Đã tạo tour mới.', 'success');
       }
       navigate(ROUTES.ADMIN_TOURS);

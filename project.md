@@ -206,18 +206,34 @@ Frontend: [WeatherForecastService.js](js/services/WeatherForecastService.js) g�
 * `.dev.vars` (cùng nội dung, dùng cho `wrangler dev` ở máy local) và `.env` đều đã thêm vào `.gitignore` — không commit lên Git.
 * Production: chạy `npx wrangler secret put OPENWEATHER_API_KEY` một lần (nhập giá trị từ `.env`) để lưu vào Cloudflare, **không** lưu trong `wrangler.toml`.
 
-### 11.3 Các bước deploy Worker thật (chỉ làm 1 lần, tự chạy — Claude không có quyền truy cập tài khoản Cloudflare)
+### 11.3 Các bước deploy Worker thật
 
-1. `npx wrangler login` — đăng nhập Cloudflare.
-2. `npx wrangler secret put OPENWEATHER_API_KEY` — dán giá trị key khi được hỏi.
-3. `npx wrangler deploy` — lấy URL Worker được cấp (dạng `https://travelviet-weather.<subdomain>.workers.dev`).
-4. Trong `index.html`, thêm trước thẻ script load `js/app.js`:
+Đã deploy thành công (2026-09-05) tại `https://travelviet-weather.phongnguyen19990911.workers.dev`, secret `OPENWEATHER_API_KEY` đã cấu hình. Các bước đã chạy (tất cả lệnh phải chạy **từ trong thư mục `worker/`**, xem lý do ở mục 11.4):
+
+1. `npx wrangler login` — đăng nhập Cloudflare (`npx.cmd wrangler login` trên PowerShell Windows nếu execution policy chặn `.ps1`).
+2. `cd worker && npx wrangler secret put OPENWEATHER_API_KEY` — dán giá trị key khi được hỏi.
+3. `cd worker && npx wrangler deploy` — lấy URL Worker được cấp (dạng `https://travelviet-weather.<subdomain>.workers.dev`).
+4. Trong `index.html`, đã thêm trước thẻ script load `js/app.js`:
    ```html
-   <script>window.WEATHER_API_BASE_URL = 'https://travelviet-weather.<subdomain>.workers.dev';</script>
+   <script>window.WEATHER_API_BASE_URL = 'https://travelviet-weather.phongnguyen19990911.workers.dev';</script>
    ```
    (mặc định khi chưa cấu hình là `http://127.0.0.1:8787`, chỉ dùng cho `wrangler dev` ở local.)
+
+### 11.4 Sự cố: push code làm sập site thật (2026-09-05) — đã khắc phục
+
+**Chuyện đã xảy ra:** ban đầu `wrangler.toml` của Worker thời tiết đặt ở **gốc repo**. Tài khoản Cloudflare của người dùng đã có sẵn Worker `travel-vibe-coding` (site tĩnh TravelViet, deploy thủ công từ 2026-08-23) với cơ chế tự build/deploy mỗi khi có push lên GitHub — nhiều khả năng cơ chế này quét `wrangler.toml` ở gốc repo để biết cách build. Vì repo giờ có 2 `wrangler.toml`-worthy code (site tĩnh cũ + Worker thời tiết mới), sau các lần push tính năng thời tiết, Worker `travel-vibe-coding` bị build/deploy nhầm thành code của `worker/weather.js` — **site thật bị ghi đè, trả lỗi JSON thay vì trang web** trong một khoảng thời gian (khoảng 2026-09-05T06:58 → 07:35).
+
+**Phát hiện:** kiểm tra `https://travel-vibe-coding.phongnguyen19990911.workers.dev/` trả về `{"error":"missing_city",...}` thay vì HTML; đối chiếu `wrangler deployments list --name travel-vibe-coding` thấy các bản deploy mới trùng thời điểm các lần push.
+
+**Khắc phục:**
+1. Rollback khẩn cấp Worker `travel-vibe-coding` về version tốt cuối (`9295d26e...`, 2026-08-23) bằng `wrangler rollback` → site chạy lại được (nhưng tạm thời mất tính năng thời tiết vì đó là bản trước khi có tính năng này).
+2. Chuyển `wrangler.toml` (và `.dev.vars`) của Worker thời tiết vào hẳn trong `worker/` (`worker/wrangler.toml`, `main = "weather.js"`) — **không còn `wrangler.toml` nào ở gốc repo** để tránh bị quét nhầm. Deploy Worker thời tiết từ nay phải chạy trong thư mục `worker/`.
+3. Redeploy `travelviet-weather` từ vị trí mới, xác nhận secret vẫn còn (secret gắn theo tên Worker, không mất khi redeploy) và hoạt động lại bình thường.
+
+**Việc người dùng cần tự kiểm tra thêm** (Claude không có quyền truy cập dashboard Cloudflare): vào Cloudflare Dashboard → Workers & Pages → `travel-vibe-coding` → tab **Settings → Build** (hoặc tương đương) để xem chính xác cấu hình auto-deploy đang trỏ vào đâu, và cân nhắc tắt auto-deploy-on-push cho Worker này nếu không chủ đích dùng, hoặc giới hạn root directory build cho đúng — tránh lặp lại sự cố nếu sau này có thêm Worker khác trong repo.
 
 ### Giới hạn đã biết (mục 11)
 
 * Worker không giới hạn origin gọi tới (`Access-Control-Allow-Origin: *`) và không rate-limit theo IP — đủ cho demo, ai biết URL Worker cũng gọi được (nhưng không lấy được key).
 * Gộp dữ liệu 3 giờ/lần của OpenWeatherMap thành "5 ngày" theo mốc giờ gần 12:00 trưa làm đại diện; ngày đầu tiên có thể là phần còn lại của hôm nay (dữ liệu bắt đầu từ thời điểm gọi API, không phải từ 00:00).
+* Sau sự cố mục 11.4, site `travel-vibe-coding` đang chạy bản **trước khi có tính năng thời tiết** — cần push lại (hoặc trigger deploy lại) sau khi xác nhận cơ chế auto-deploy đã an toàn, để đưa tính năng thời tiết trở lại site thật.

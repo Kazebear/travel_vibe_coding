@@ -1,7 +1,0 @@
-name = "travelviet-weather"
-main = "worker/weather.js"
-compatibility_date = "2024-11-01"
-
-# OPENWEATHER_API_KEY khong khai bao o day (secret, khong duoc commit).
-# - Local dev: doc tu file .dev.vars (git-ignored).
-# - Production: chay `npx wrangler secret put OPENWEATHER_API_KEY` mot lan.

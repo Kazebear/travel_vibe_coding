@@ -8,6 +8,7 @@ import { setSearchParams } from '../state.js';
 import { todayISO, addDaysISO } from '../utils/formatDate.js';
 import { airlineColor } from '../utils/airlineVisual.js';
 import { skeletonGrid } from '../utils/loading.js';
+import { renderWeatherWidget, bindWeatherWidget } from '../components/WeatherWidget.js';
 
 function renderPage(root) {
   root.innerHTML = `<div class="container" style="padding:48px 0">${skeletonGrid(4, 220)}</div>`;
@@ -82,6 +83,14 @@ async function draw(root) {
 
     <section class="section">
       <div class="container">
+        <h2 class="section-title">Thời tiết điểm đến</h2>
+        <p class="section-subtitle">Xem nhanh thời tiết hiện tại trước khi lên kế hoạch</p>
+        ${renderWeatherWidget()}
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
         <h2 class="section-title">Tour du lịch nổi bật</h2>
         <p class="section-subtitle">8 hành trình được yêu thích nhất tại TravelViet</p>
         ${tours.length ? `<div class="tour-grid">${tours.map(renderTourCard).join('')}</div>` : `<div class="state-box"><div class="state-icon">🧳</div>Chưa có tour nổi bật.</div>`}
@@ -108,6 +117,7 @@ async function draw(root) {
   `;
 
   bindSearchForm(root);
+  bindWeatherWidget(root);
 }
 
 function bindSearchForm(root) {

@@ -922,3 +922,41 @@
   width: auto;
   min-width: 200px;
 }
+
+/* ===== Weather widget ===== */
+.weather-widget {
+  max-width: 480px;
+}
+.weather-form {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+.weather-form .form-group {
+  flex: 1;
+  margin-bottom: 0;
+}
+.weather-result:not(:empty) {
+  margin-top: var(--space-4);
+}
+.weather-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+}
+.weather-temp {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+.weather-location {
+  font-weight: 700;
+}
+.weather-desc {
+  color: var(--color-text-muted);
+  font-size: 14px;
+}

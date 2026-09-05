@@ -68,11 +68,20 @@ function weatherDescription(code) {
   return WEATHER_CODE_LABELS[code] ?? 'Không xác định';
 }
 
+// Geocoding của Open-Meteo đôi khi khớp sai với tên có dấu tiếng Việt
+// (vd "Đà Lạt" ra một xã hẻo lánh ở Quảng Trị) nhưng khớp đúng khi bỏ dấu.
+function stripDiacritics(str) {
+  return str
+    .replace(/[đĐ]/g, (m) => (m === 'Đ' ? 'D' : 'd'))
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
+}
+
 export async function getCurrentWeatherByCity(cityName, { timeoutMs = REQUEST_TIMEOUT_MS } = {}) {
   const city = (cityName ?? '').trim();
   if (!city) throw new WeatherCityNotFoundError(city);
 
-  const geoUrl = `${GEOCODING_URL}?name=${encodeURIComponent(city)}&count=1&language=vi&format=json`;
+  const geoUrl = `${GEOCODING_URL}?name=${encodeURIComponent(stripDiacritics(city))}&count=1&language=vi&format=json`;
   const geoData = await fetchJson(geoUrl, timeoutMs);
   const match = geoData.results?.[0];
   if (!match) throw new WeatherCityNotFoundError(city);

@@ -3,3 +3,6 @@ node_modules/
 Thumbs.db
 *.log
 data/*.sqlite
+.env
+.dev.vars
+.wrangler/

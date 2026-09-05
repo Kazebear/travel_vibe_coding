@@ -62,6 +62,11 @@ export const STORAGE_KEYS = {
 
 export const EMAIL_SENDER = 'nvhai061993@gmail.com';
 
+// Cloudflare Worker (worker/weather.js) giu API key OpenWeatherMap, khong goi thang tu trinh duyet.
+// Sau khi `wrangler deploy`, dat window.WEATHER_API_BASE_URL truoc khi app.js load (vd trong index.html)
+// tro ve URL Worker that (vd https://travelviet-weather.<subdomain>.workers.dev).
+export const WEATHER_API_BASE_URL = window.WEATHER_API_BASE_URL || 'http://127.0.0.1:8787';
+
 export const AIRCRAFT_TYPES = [
   'Airbus A320', 'Airbus A321', 'Airbus A330', 'Airbus A350',
   'Boeing 737', 'Boeing 787', 'Boeing 777',

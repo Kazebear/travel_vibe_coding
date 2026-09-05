@@ -181,3 +181,43 @@ Project Supabase: `sghzjlrpdgyrmfeejsgc`.
 
 * Insert `bookings`/`booking_flights`/`booking_tours` mở công khai (giữ đúng luồng đặt vé không cần đăng nhập) → về lý thuyết ai cũng chèn được booking rác vào DB thật — giới hạn cố hữu của kiến trúc không backend, không riêng do Supabase.
 * Email đặt lại mật khẩu (`resetPasswordForEmail`) dùng SMTP mặc định của Supabase (free tier, giới hạn số lượng/giờ) — đủ cho demo.
+
+---
+
+## 11. Tính năng thời tiết (2026-09-05)
+
+### 11.1 Thời tiết hiện tại — Open-Meteo (frontend-only)
+
+Thêm widget tra cứu thời tiết hiện tại theo tên thành phố trên trang chủ ([HomePage.js](js/pages/HomePage.js)). [WeatherService.js](js/services/WeatherService.js) gọi thẳng Geocoding + Forecast API của Open-Meteo từ trình duyệt — không cần key, đúng kiến trúc frontend-only gốc của dự án.
+
+**Bug đã sửa:** Open-Meteo geocoding khớp sai với một số tên có dấu tiếng Việt (vd "Đà Lạt" có dấu ra một xã hẻo lánh ở Quảng Trị thay vì Đà Lạt, Lâm Đồng — xác minh bằng cách gọi trực tiếp API, lỗi này tồn tại bất kể `count` hay tham số `language`). Đã sửa bằng cách bỏ dấu tiếng Việt trước khi gửi tên thành phố cho geocoding; tên hiển thị vẫn có dấu đầy đủ vì server tự trả về theo `language=vi`. Đã kiểm tra lại toàn bộ thành phố lớn (Hà Nội, Đà Nẵng, Huế, Cần Thơ, Nha Trang, Hải Phòng, Vũng Tàu, Quy Nhơn).
+
+### 11.2 Dự báo 5 ngày — OpenWeatherMap qua Cloudflare Worker (ngoại lệ kiến trúc)
+
+Yêu cầu thêm dự báo 5 ngày dùng OpenWeatherMap, cần API key riêng của người dùng. Khác với Supabase anon key (thiết kế để public, bảo vệ bằng RLS) hay Open-Meteo (miễn phí, không cần key), **key của OpenWeatherMap không được thiết kế để lộ ra trình duyệt** — gắn thẳng vào code chạy client sẽ để lộ key cho bất kỳ ai xem Network tab sau khi deploy.
+
+**Quyết định** (người dùng xác nhận, chấp nhận phá lệ "không backend" đã ghi trong README.md mục 7): thêm một Cloudflare Worker nhỏ ([worker/weather.js](worker/weather.js)) làm proxy — nhận `?city=`, gọi OpenWeatherMap bằng key giữ ở server (Worker secret), gộp dữ liệu 3 giờ/lần thành 5 ngày (nhiệt độ min/max, mô tả, icon lấy giờ gần 12:00 trưa làm đại diện), trả JSON gọn cho frontend. Đây là **ngoại lệ duy nhất** với nguyên tắc frontend-only — đã ghi rõ trong README.md mục 7 và ARCHITECTURE.md mục 1.
+
+Frontend: [WeatherForecastService.js](js/services/WeatherForecastService.js) gọi Worker (không gọi thẳng OpenWeatherMap), [WeatherWidget.js](js/components/WeatherWidget.js) hiển thị song song thời tiết hiện tại (Open-Meteo) + dự báo 5 ngày (Worker) bằng `Promise.allSettled` — một bên lỗi không chặn bên kia.
+
+**Quản lý secret:**
+
+* API key gốc lưu ở `.env` (theo yêu cầu người dùng) — nhưng file `.env` **không** được trình duyệt hay Cloudflare Worker đọc trực tiếp (dự án không có bước build/bundler để inject biến môi trường vào code client, và Worker runtime cũng không tự đọc `.env`). Đây chỉ là nơi lưu key gốc theo ý người dùng.
+* `.dev.vars` (cùng nội dung, dùng cho `wrangler dev` ở máy local) và `.env` đều đã thêm vào `.gitignore` — không commit lên Git.
+* Production: chạy `npx wrangler secret put OPENWEATHER_API_KEY` một lần (nhập giá trị từ `.env`) để lưu vào Cloudflare, **không** lưu trong `wrangler.toml`.
+
+### 11.3 Các bước deploy Worker thật (chỉ làm 1 lần, tự chạy — Claude không có quyền truy cập tài khoản Cloudflare)
+
+1. `npx wrangler login` — đăng nhập Cloudflare.
+2. `npx wrangler secret put OPENWEATHER_API_KEY` — dán giá trị key khi được hỏi.
+3. `npx wrangler deploy` — lấy URL Worker được cấp (dạng `https://travelviet-weather.<subdomain>.workers.dev`).
+4. Trong `index.html`, thêm trước thẻ script load `js/app.js`:
+   ```html
+   <script>window.WEATHER_API_BASE_URL = 'https://travelviet-weather.<subdomain>.workers.dev';</script>
+   ```
+   (mặc định khi chưa cấu hình là `http://127.0.0.1:8787`, chỉ dùng cho `wrangler dev` ở local.)
+
+### Giới hạn đã biết (mục 11)
+
+* Worker không giới hạn origin gọi tới (`Access-Control-Allow-Origin: *`) và không rate-limit theo IP — đủ cho demo, ai biết URL Worker cũng gọi được (nhưng không lấy được key).
+* Gộp dữ liệu 3 giờ/lần của OpenWeatherMap thành "5 ngày" theo mốc giờ gần 12:00 trưa làm đại diện; ngày đầu tiên có thể là phần còn lại của hôm nay (dữ liệu bắt đầu từ thời điểm gọi API, không phải từ 00:00).

@@ -27,6 +27,16 @@ Browser
 
 Không có server backend tự viết. Trình duyệt gọi thẳng Supabase bằng publishable/anon key; toàn bộ phân quyền nằm ở Row Level Security trên Postgres, không ở tầng JavaScript.
 
+**Ngoại lệ:** dự báo thời tiết 5 ngày (OpenWeatherMap) cần API key không được phép public, nên đi qua một Cloudflare Worker riêng ([worker/weather.js](worker/weather.js)) giữ vai trò backend nhỏ, chỉ để giấu key:
+
+```text
+Browser → WeatherForecastService.js → Cloudflare Worker (worker/weather.js, giữ OPENWEATHER_API_KEY)
+                                            │
+                                            └── OpenWeatherMap API
+```
+
+Xem lý do đầy đủ ở [project.md](project.md) mục 11. Thời tiết hiện tại (không cần key) vẫn gọi thẳng Open-Meteo từ trình duyệt như bình thường ([WeatherService.js](js/services/WeatherService.js)).
+
 ---
 
 # 2. Recommended Folder Structure

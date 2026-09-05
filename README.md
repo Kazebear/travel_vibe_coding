@@ -171,6 +171,8 @@ Không sử dụng PHP, Node.js server, Express, Laravel, Java Spring hoặc ser
 
 Toàn bộ business logic phải chạy ở browser.
 
+**Ngoại lệ duy nhất:** [worker/weather.js](worker/weather.js) — một Cloudflare Worker nhỏ, chỉ để giấu API key của OpenWeatherMap (dự báo 5 ngày). Lý do và chi tiết setup: xem [project.md](project.md) mục 11.
+
 Tách code theo:
 
 * UI

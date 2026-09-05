@@ -9,6 +9,7 @@
   .cart-layout { grid-template-columns: 1fr; }
   .profile-layout { grid-template-columns: 1fr; }
   .detail-info-grid { grid-template-columns: repeat(2, 1fr); }
+  .forecast-list { grid-template-columns: repeat(3, 1fr); }
 }
 
 /* Mobile */
@@ -47,6 +48,7 @@
   .weather-form { flex-direction: column; align-items: stretch; }
   .weather-form .btn { width: 100%; }
   .weather-card { flex-direction: column; align-items: flex-start; }
+  .forecast-list { grid-template-columns: repeat(2, 1fr); }
 
   .tour-grid { grid-template-columns: 1fr; }
   .airline-grid { grid-template-columns: repeat(2, 1fr); }
